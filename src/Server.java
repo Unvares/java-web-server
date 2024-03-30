@@ -1,4 +1,4 @@
-package server;
+package src;
 
 import java.io.File;
 import java.io.IOException;
@@ -6,8 +6,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 class Server {
+  private final FileManager fileManager;
+  private final DatabaseManager databaseManager;
+
   private final ServerSocket serverSocket;
-  private final File root;
+  private final File rootDirectory;
   private final int portNumber;
 
   public static void main(String[] args) throws IOException {
@@ -30,8 +33,10 @@ class Server {
 
   Server(String portNumber, String pathToPublic) throws IOException {
     this.portNumber = parsePortNumber(portNumber);
-    this.root = validateRootDirectory(pathToPublic);
+    this.rootDirectory = validateRootDirectory(pathToPublic);
     this.serverSocket = createServerSocket();
+    this.fileManager = new FileManager(rootDirectory);
+    this.databaseManager = new DatabaseManager();
   }
 
   private int parsePortNumber(String port) {
@@ -58,7 +63,7 @@ class Server {
       try {
         // clientSocket is closed in ClientHandler
         Socket clientSocket = serverSocket.accept();
-        new ClientHandler(clientSocket).start();
+        new ClientHandler(clientSocket, fileManager, databaseManager).start();
       } catch (IOException e) {
         System.err.println("Exception caught when trying to listen on port " + portNumber);
         System.err.println("Error: " + e.getMessage());
