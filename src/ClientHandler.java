@@ -87,7 +87,7 @@ public class ClientHandler extends Thread {
     // sendResponse to sendData back
   }
 
-  private void HandleFileUpload() {
+  private void handleFileUpload() {
     // use FileManager to upload the file
   }
 
