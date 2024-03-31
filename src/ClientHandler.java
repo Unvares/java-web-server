@@ -78,11 +78,15 @@ public class ClientHandler extends Thread {
     }
   }
 
-  private void handlePostRequest() {
-    // handle the request based on Content-Type and URL, use getCredentials to
-    // extract credentials from the request, FilePath to extract data from
-    // database/users.json, FilePath to write data to resources/ and
-    // sendResponse to sendData back
+  private void handlePostRequest() throws IOException {
+    String path = requestData.getUrl();
+    switch (path) {
+      case "/login":
+        handleLogin();
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid path: " + path);
+    }
   }
 
   private void handleRedirection(String path) throws IOException {
@@ -94,8 +98,27 @@ public class ClientHandler extends Thread {
     // use FileManager to upload the file
   }
 
-  private void handleLogin() {
-    // use database manager to extract data from database/users.json
+  private void handleLogin() throws IOException {
+    String[] credentials = getCredentials(requestData.getBodyAsString());
+    boolean result = databaseManager.validateCredentials(credentials[0], credentials[1]);
+    if (result == true)
+      writeResponse(StatusCode.OK);
+    if (result == false)
+      writeResponse(StatusCode.UNAUTHORIZED);
+  }
+
+  private String[] getCredentials(String body) {
+    String[] credentials = body.split("&");
+    String username = "";
+    String password = "";
+    for (String credential : credentials) {
+      if (credential.startsWith("username=")) {
+        username = credential.split("=")[1];
+      } else if (credential.startsWith("password=")) {
+        password = credential.split("=")[1];
+      }
+    }
+    return new String[] { username, password };
   }
 
   private String createStatusLine(StatusCode statusCode) {
