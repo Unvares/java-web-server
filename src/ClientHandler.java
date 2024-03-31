@@ -27,7 +27,8 @@ public class ClientHandler extends Thread {
 
   public void run() {
     try (InputStream in = clientSocket.getInputStream()) {
-      handleRequest(in);
+      this.requestData = new RequestData(in, fileManager);
+      handleRequest();
     } catch (IOException | RuntimeException e) {
       System.err.println("Exception caught when trying to handle the client request");
       System.err.println("Error: " + e.getMessage());
@@ -41,9 +42,7 @@ public class ClientHandler extends Thread {
     }
   }
 
-  private void handleRequest(InputStream inputStream) throws IOException {
-    this.requestData = new RequestData(inputStream, fileManager);
-
+  private void handleRequest() throws IOException {
     RequestMethod method = requestData.getMethod();
     switch (method) {
       case RequestMethod.GET:
@@ -63,9 +62,15 @@ public class ClientHandler extends Thread {
   private void handleGetRequest() throws IOException {
     try {
       String path = requestData.getUrl();
-      byte[] data = fileManager.getContentAsBytes(path);
-      String mimeType = fileManager.getMimeType(path);
-      writeResponse(StatusCode.OK, mimeType, data);
+      switch (path) {
+        case "/clown.png":
+          handleRedirection("redirect/clown.png");
+          break;
+        default:
+          byte[] data = fileManager.getContentAsBytes(path);
+          String mimeType = fileManager.getMimeType(path);
+          writeResponse(StatusCode.OK, mimeType, data);
+      }
     } catch (NoSuchFileException e) {
       writeResponse(StatusCode.NOT_FOUND);
     } catch (AccessDeniedException e) {
@@ -78,6 +83,11 @@ public class ClientHandler extends Thread {
     // extract credentials from the request, FilePath to extract data from
     // database/users.json, FilePath to write data to resources/ and
     // sendResponse to sendData back
+  }
+
+  private void handleRedirection(String path) throws IOException {
+    String mimeType = fileManager.getMimeType(path);
+    writeResponse(StatusCode.FOUND, mimeType, path);
   }
 
   private void handleFileUpload() {
@@ -111,12 +121,26 @@ public class ClientHandler extends Thread {
     System.out.print(statusLine);
     System.out.print(contentTypeLine);
     System.out.print(contentLengthLine);
-    System.out.println();
 
     out.write(statusLine.getBytes());
     out.write(contentTypeLine.getBytes());
     out.write(contentLengthLine.getBytes());
     out.write(data);
+  }
+
+  private void writeResponse(StatusCode statusCode, String mimeType, String redirectUrl) throws IOException {
+    String statusLine = createStatusLine(statusCode);
+    String locationLine = "Location: " + redirectUrl + "\r\n";
+    String contentTypeLine = createContentTypeLine(mimeType);
+
+    System.out.println("Sending back the following response:");
+    System.out.print(statusLine);
+    System.out.print(locationLine);
+    System.out.print(contentTypeLine + "\n");
+
+    out.write(statusLine.getBytes());
+    out.write(locationLine.getBytes());
+    out.write(contentTypeLine.getBytes());
   }
 
   private void writeResponse(StatusCode statusCode) throws IOException {
