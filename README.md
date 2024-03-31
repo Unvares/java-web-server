@@ -19,6 +19,26 @@ Once the files are compiled, you can run the server by providing two command-lin
 ## Testing
 To run the tests, use either of the following commands depending on your Python version: `python tests/testa2u1.py` or `python3 tests/testa2u1.py`
 
+To test the redirection functionality, access the /redirectme.lol file. This should redirect your request to /redirect/clown.png.
+
+To simulate an internal server error, send a POST request to a non-existent path. You can do this by executing the following command in your browser console:
+```
+fetch('http://localhost:8080/nonexistentpath', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    key: 'value'
+  })
+})
+.then(response => response.text())
+.then(data => console.log(data))
+.catch((error) => {
+  console.error('Error:', error);
+});
+```
+
 ## Exception Handling
 **IOException and RuntimeException in ClientHandler's run method:**  These exceptions are caught when trying to handle a client request. If an IOException or RuntimeException occurs, it's likely due to an issue with the client's input stream or an unexpected error in the code. In this case, an error message is printed to the console, and an HTTP 500 (Internal Server Error) response is sent back to the client. This is done to ensure that the client is informed of the server-side error. This can be seen in the code from lines 29 to 45 in src/ClientHandler.java.  
 
