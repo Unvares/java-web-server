@@ -6,8 +6,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 
 import src.enums.RequestMethod;
+import src.enums.StatusCode;
 
 public class ClientHandler extends Thread {
   private final FileManager fileManager;
@@ -26,7 +28,7 @@ public class ClientHandler extends Thread {
   public void run() {
     try (InputStream in = clientSocket.getInputStream()) {
       handleRequest(in);
-    } catch (IOException e) {
+    } catch (IOException | RuntimeException e) {
       System.out.println("Exception caught when trying to handle the client request");
       System.out.println("Error: " + e.getMessage());
       System.out.println("Interrupting " + this.getName());
@@ -47,13 +49,16 @@ public class ClientHandler extends Thread {
     RequestMethod method = getRequestMethod(in);
     switch (method) {
       case RequestMethod.GET:
+        System.out.println("Received GET request\n");
         handleGetRequest(in);
         break;
       case RequestMethod.POST:
+        System.out.println("Received POST request\n");
         handlePostRequest(in);
         break;
       default:
-        sendError(400, "Bad Request: Invalid request type");
+        sendResponse(StatusCode.BAD_REQUEST, StatusCode.BAD_REQUEST.getPhrase(), new byte[0]);
+        throw new IllegalArgumentException("Invalid request type. " + method + " method is not supported");
     }
   }
 
@@ -102,13 +107,43 @@ public class ClientHandler extends Thread {
     // use database manager to extract data from database/users.json
   }
 
-  private void sendResponse(int statusCode, byte[] data) throws IOException {
-    // Send a response back to the client
-    out.close();
+  private byte[] createStatusLine(StatusCode statusCode, String phrase) {
+    return String.format("HTTP/1.1 %3d %s\r\n", statusCode.getCode(), phrase).getBytes();
   }
 
-  private void sendError(int statusCode, String message) throws IOException {
-    // Send an error back to the client
+  private byte[] createContentTypeLine(String contentType) {
+    return String.format("Content-Type: %s\r\n", contentType).getBytes();
+  }
+
+  private byte[] createBody(byte[] data) {
+    String contentLengthLine = String.format("Content-Length: %d\r\n", data.length);
+    String bodyLine = new String(data, StandardCharsets.UTF_8);
+
+    return (contentLengthLine + "\r\n" + bodyLine).getBytes(StandardCharsets.UTF_8);
+  }
+
+  private void sendResponse(StatusCode statusCode, String phrase, byte[] data) throws IOException {
+    out.write(createStatusLine(statusCode, phrase));
+
+    switch (statusCode) {
+      case StatusCode.OK:
+        break;
+      case StatusCode.UNAUTHORIZED:
+        break;
+      case StatusCode.FOUND:
+        break;
+      case StatusCode.BAD_REQUEST:
+        out.write(createContentTypeLine("text/plain"));
+        break;
+      case StatusCode.NOT_FOUND:
+        break;
+      case StatusCode.INTERNAL_SERVER_ERROR:
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid status code");
+    }
+    out.write(createBody(data));
+    out.flush();
     out.close();
   }
 }
