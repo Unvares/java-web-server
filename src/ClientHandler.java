@@ -35,6 +35,12 @@ public class ClientHandler extends Thread {
       System.err.println("Interrupting " + this.getName());
       System.err.println();
       e.printStackTrace();
+      try {
+        writeResponse(StatusCode.INTERNAL_SERVER_ERROR);
+      } catch (IOException e1) {
+        e1.printStackTrace();
+      }
+      sendResponse();
       interrupt();
     } finally {
       sendResponse();
