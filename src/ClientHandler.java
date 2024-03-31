@@ -1,12 +1,12 @@
 package src;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.NoSuchFileException;
 
 import src.enums.RequestMethod;
 import src.enums.StatusCode;
@@ -14,6 +14,7 @@ import src.enums.StatusCode;
 public class ClientHandler extends Thread {
   private final FileManager fileManager;
   private final DatabaseManager databaseManager;
+  private RequestData requestData;
 
   private final Socket clientSocket;
   private final OutputStream out;
@@ -33,6 +34,7 @@ public class ClientHandler extends Thread {
       System.out.println("Error: " + e.getMessage());
       System.out.println("Interrupting " + this.getName());
       System.out.println();
+      e.printStackTrace();
       interrupt();
     } finally {
       try {
@@ -44,55 +46,38 @@ public class ClientHandler extends Thread {
   }
 
   private void handleRequest(InputStream inputStream) throws IOException {
-    BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
+    this.requestData = new RequestData(inputStream);
 
-    RequestMethod method = getRequestMethod(in);
+    RequestMethod method = requestData.getMethod();
     switch (method) {
       case RequestMethod.GET:
-        System.out.println("Received GET request\n");
-        handleGetRequest(in);
+        System.out.println("Received GET request for " + requestData.getUrl() + " file");
+        handleGetRequest();
         break;
       case RequestMethod.POST:
         System.out.println("Received POST request\n");
-        handlePostRequest(in);
+        handlePostRequest();
         break;
       default:
-        sendResponse(StatusCode.BAD_REQUEST, StatusCode.BAD_REQUEST.getPhrase(), new byte[0]);
+        sendResponse(StatusCode.BAD_REQUEST);
         throw new IllegalArgumentException("Invalid request type. " + method + " method is not supported");
     }
   }
 
-  private RequestMethod getRequestMethod(BufferedReader in) throws IOException {
-    String method = in.readLine().split(" ")[0];
-    switch (method) {
-      case "GET":
-        return RequestMethod.GET;
-      case "POST":
-        return RequestMethod.POST;
-      default:
-        throw new IllegalArgumentException("Invalid request method. Only GET and POST are supported.");
+  private void handleGetRequest() throws IOException {
+    try {
+      String path = requestData.getUrl();
+      byte[] data = fileManager.getFileAsByteArray(path);
+      String mimeType = fileManager.getMimeType(path);
+      sendResponse(StatusCode.OK, mimeType, data);
+    } catch (NoSuchFileException e) {
+      sendResponse(StatusCode.NOT_FOUND);
+    } catch (AccessDeniedException e) {
+      sendResponse(StatusCode.UNAUTHORIZED);
     }
   }
 
-  private String getFilePath(String request) {
-    // Return the file path as a string
-    return "";
-  }
-
-  private String[] getCredentials(String request) {
-    // Return the username and password as a string array
-    return new String[2];
-  }
-
-  private void handleGetRequest(BufferedReader in) {
-    // Clients may request various data types. Our server only serves files.
-    // For scalability, the solution should be implemented as if server other
-    // types of data, which means that we determine the requested type of data
-    // based on the URL and query parameters, then use FileManager for retrieval
-    // and sendResponse to send the data back
-  }
-
-  private void handlePostRequest(BufferedReader in) {
+  private void handlePostRequest() {
     // handle the request based on Content-Type and URL, use getCredentials to
     // extract credentials from the request, FilePath to extract data from
     // database/users.json, FilePath to write data to resources/ and
@@ -107,8 +92,8 @@ public class ClientHandler extends Thread {
     // use database manager to extract data from database/users.json
   }
 
-  private byte[] createStatusLine(StatusCode statusCode, String phrase) {
-    return String.format("HTTP/1.1 %3d %s\r\n", statusCode.getCode(), phrase).getBytes();
+  private byte[] createStatusLine(StatusCode statusCode) {
+    return String.format("HTTP/1.1 %3d %s\r\n", statusCode.getCode(), statusCode.getPhrase()).getBytes();
   }
 
   private byte[] createContentTypeLine(String contentType) {
@@ -122,9 +107,13 @@ public class ClientHandler extends Thread {
     return (contentLengthLine + "\r\n" + bodyLine).getBytes(StandardCharsets.UTF_8);
   }
 
-  private void sendResponse(StatusCode statusCode, String phrase, byte[] data) throws IOException {
-    out.write(createStatusLine(statusCode, phrase));
+  private void sendResponse(StatusCode statusCode, String mimeType, byte[] data) throws IOException {
+    System.out.println("Sending back the following response:");
+    System.out.println(statusCode.getCode() + " " + statusCode.getPhrase() + " HTTP/1.1");
+    System.out.println("Content-Type: " + mimeType);
+    System.out.println("Content-Length: " + data.length);
 
+    out.write(createStatusLine(statusCode));
     switch (statusCode) {
       case StatusCode.OK:
         break;
@@ -142,7 +131,16 @@ public class ClientHandler extends Thread {
       default:
         throw new IllegalArgumentException("Invalid status code");
     }
+
     out.write(createBody(data));
+    out.flush();
+    out.close();
+  }
+
+  private void sendResponse(StatusCode statusCode) throws IOException {
+    out.write(createStatusLine(statusCode));
+    out.write(createContentTypeLine("text/plain"));
+    out.write(createBody(new byte[0]));
     out.flush();
     out.close();
   }
