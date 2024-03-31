@@ -57,9 +57,16 @@ public class ClientHandler extends Thread {
     }
   }
 
-  private RequestMethod getRequestMethod(BufferedReader in) {
-    // Return the request type as an enum (GET or POST)
-    return RequestMethod.GET;
+  private RequestMethod getRequestMethod(BufferedReader in) throws IOException {
+    String method = in.readLine().split(" ")[0];
+    switch (method) {
+      case "GET":
+        return RequestMethod.GET;
+      case "POST":
+        return RequestMethod.POST;
+      default:
+        throw new IllegalArgumentException("Invalid request method. Only GET and POST are supported.");
+    }
   }
 
   private String getFilePath(String request) {
