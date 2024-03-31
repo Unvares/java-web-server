@@ -1,6 +1,10 @@
 # Assignment 2
 All tasks have been completed with the exception of image uploading.
 
+## Group Participation
+Rihards Okmanis: 100%
+Armela Pasku: 0%
+
 ## Code Structure
 The main classes in the project are:
 - **Server.java:** This is the main class that starts the server.
