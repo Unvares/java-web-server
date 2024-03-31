@@ -69,7 +69,7 @@ public class ClientHandler extends Thread {
     try {
       String path = requestData.getUrl();
       switch (path) {
-        case "/clown.png":
+        case "/redirectme.lol":
           handleRedirection("redirect/clown.png");
           break;
         default:
