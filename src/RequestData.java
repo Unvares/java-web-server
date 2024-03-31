@@ -20,7 +20,7 @@ public class RequestData {
         BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
         String[] parameters = in.readLine().split(" ");
         this.method = parseMethod(parameters[0]);
-        this.url = parameters[1];
+        this.url = parseUrl(parameters[1]);
         this.protocol = parameters[2];
         this.headers = parseHeaders(in);
         this.queryParams = parseQueryParams(in);
@@ -35,6 +35,10 @@ public class RequestData {
             default:
                 throw new IllegalArgumentException("Invalid method: " + method);
         }
+    }
+
+    private String parseUrl(String url) {
+        return (url.equals("/") || url.isEmpty()) ? "/index.html" : url;
     }
 
     private Map<String, String> parseHeaders(BufferedReader in) throws IOException {
