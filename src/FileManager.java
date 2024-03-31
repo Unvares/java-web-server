@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.NoSuchFileException;
 
 public class FileManager {
     private final File rootDirectory;
@@ -17,7 +19,7 @@ public class FileManager {
         validateFilePath(requestedFile);
 
         if (!requestedFile.exists()) {
-            throw new IOException("Requested file does not exist.");
+            throw new NoSuchFileException("Requested file does not exist.");
         }
 
         return requestedFile;
@@ -38,7 +40,7 @@ public class FileManager {
 
     private void validateFilePath(File file) throws IOException {
         if (!file.getCanonicalPath().startsWith(rootDirectory.getCanonicalPath())) {
-            throw new IllegalArgumentException("Access to files outside of the root directory is prohibited.");
+            throw new AccessDeniedException("Access to files outside of the root directory is prohibited.");
         }
     }
 }
