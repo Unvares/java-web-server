@@ -19,8 +19,8 @@ public class RequestData {
     RequestData(InputStream inputStream) throws IOException {
         BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
         String[] parameters = in.readLine().split(" ");
-        this.url = parameters[0];
-        this.method = parseMethod(parameters[1]);
+        this.method = parseMethod(parameters[0]);
+        this.url = parameters[1];
         this.protocol = parameters[2];
         this.headers = parseHeaders(in);
         this.queryParams = parseQueryParams(in);
