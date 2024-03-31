@@ -94,10 +94,6 @@ public class ClientHandler extends Thread {
     writeResponse(StatusCode.FOUND, mimeType, path);
   }
 
-  private void handleFileUpload() {
-    // use FileManager to upload the file
-  }
-
   private void handleLogin() throws IOException {
     String[] credentials = getCredentials(requestData.getBodyAsString());
     boolean result = databaseManager.validateCredentials(credentials[0], credentials[1]);
