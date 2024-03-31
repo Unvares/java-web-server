@@ -10,13 +10,17 @@ import java.util.Map;
 import src.enums.RequestMethod;
 
 public class RequestData {
+    private final FileManager fileManager;
+
     private final String url;
     private final RequestMethod method;
     private final String protocol;
     private final Map<String, String> headers;
     private final Map<String, String> queryParams;
 
-    RequestData(InputStream inputStream) throws IOException {
+    RequestData(InputStream inputStream, FileManager fileManager) throws IOException {
+        this.fileManager = fileManager;
+
         BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
         String[] parameters = in.readLine().split(" ");
         this.method = parseMethod(parameters[0]);
@@ -37,8 +41,11 @@ public class RequestData {
         }
     }
 
-    private String parseUrl(String url) {
-        return (url.equals("/") || url.isEmpty()) ? "/index.html" : url;
+    private String parseUrl(String url) throws IOException {
+        if (fileManager.isDirectory(url)) {
+            return url.endsWith("/") ? url + "index.html" : url + "/index.html";
+        }
+        return url;
     }
 
     private Map<String, String> parseHeaders(BufferedReader in) throws IOException {

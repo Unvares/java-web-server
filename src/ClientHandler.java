@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.NoSuchFileException;
 
@@ -37,29 +36,26 @@ public class ClientHandler extends Thread {
       e.printStackTrace();
       interrupt();
     } finally {
-      try {
-        clientSocket.close();
-      } catch (IOException e) {
-        System.out.println("Error closing client socket: " + e.getMessage());
-      }
+      sendResponse();
+      closeClientSocket();
     }
   }
 
   private void handleRequest(InputStream inputStream) throws IOException {
-    this.requestData = new RequestData(inputStream);
+    this.requestData = new RequestData(inputStream, fileManager);
 
     RequestMethod method = requestData.getMethod();
     switch (method) {
       case RequestMethod.GET:
-        System.out.println("Received GET request for " + requestData.getUrl() + " file");
+        System.out.println("Received GET request for " + requestData.getUrl());
         handleGetRequest();
         break;
       case RequestMethod.POST:
-        System.out.println("Received POST request\n");
+        System.out.println("Received POST request for " + requestData.getUrl());
         handlePostRequest();
         break;
       default:
-        sendResponse(StatusCode.BAD_REQUEST);
+        writeResponse(StatusCode.BAD_REQUEST);
         throw new IllegalArgumentException("Invalid request type. " + method + " method is not supported");
     }
   }
@@ -67,13 +63,13 @@ public class ClientHandler extends Thread {
   private void handleGetRequest() throws IOException {
     try {
       String path = requestData.getUrl();
-      byte[] data = fileManager.getFileAsByteArray(path);
+      byte[] data = fileManager.getContentAsBytes(path);
       String mimeType = fileManager.getMimeType(path);
-      sendResponse(StatusCode.OK, mimeType, data);
+      writeResponse(StatusCode.OK, mimeType, data);
     } catch (NoSuchFileException e) {
-      sendResponse(StatusCode.NOT_FOUND);
+      writeResponse(StatusCode.NOT_FOUND);
     } catch (AccessDeniedException e) {
-      sendResponse(StatusCode.UNAUTHORIZED);
+      writeResponse(StatusCode.UNAUTHORIZED);
     }
   }
 
@@ -92,56 +88,55 @@ public class ClientHandler extends Thread {
     // use database manager to extract data from database/users.json
   }
 
-  private byte[] createStatusLine(StatusCode statusCode) {
-    return String.format("HTTP/1.1 %3d %s\r\n", statusCode.getCode(), statusCode.getPhrase()).getBytes();
+  private String createStatusLine(StatusCode statusCode) {
+    int status = statusCode.getCode();
+    String phrase = statusCode.getPhrase();
+    return String.format("HTTP/1.1 %3d %s\r\n", status, phrase);
   }
 
-  private byte[] createContentTypeLine(String contentType) {
-    return String.format("Content-Type: %s\r\n", contentType).getBytes();
+  private String createContentTypeLine(String contentType) {
+    return "Content-Type: " + contentType + "\r\n";
   }
 
-  private byte[] createBody(byte[] data) {
-    String contentLengthLine = String.format("Content-Length: %d\r\n", data.length);
-    String bodyLine = new String(data, StandardCharsets.UTF_8);
-
-    return (contentLengthLine + "\r\n" + bodyLine).getBytes(StandardCharsets.UTF_8);
+  private String createContentLengthLine(byte[] data) {
+    return "Content-Length: " + data.length + "\r\n\r\n";
   }
 
-  private void sendResponse(StatusCode statusCode, String mimeType, byte[] data) throws IOException {
+  private void writeResponse(StatusCode statusCode, String mimeType, byte[] data) throws IOException {
+    String statusLine = createStatusLine(statusCode);
+    String contentTypeLine = createContentTypeLine(mimeType);
+    String contentLengthLine = createContentLengthLine(data);
+
     System.out.println("Sending back the following response:");
-    System.out.println(statusCode.getCode() + " " + statusCode.getPhrase() + " HTTP/1.1");
-    System.out.println("Content-Type: " + mimeType);
-    System.out.println("Content-Length: " + data.length);
+    System.out.print(statusLine);
+    System.out.print(contentTypeLine);
+    System.out.print(contentLengthLine);
+    System.out.println();
 
-    out.write(createStatusLine(statusCode));
-    switch (statusCode) {
-      case StatusCode.OK:
-        break;
-      case StatusCode.UNAUTHORIZED:
-        break;
-      case StatusCode.FOUND:
-        break;
-      case StatusCode.BAD_REQUEST:
-        out.write(createContentTypeLine("text/plain"));
-        break;
-      case StatusCode.NOT_FOUND:
-        break;
-      case StatusCode.INTERNAL_SERVER_ERROR:
-        break;
-      default:
-        throw new IllegalArgumentException("Invalid status code");
-    }
-
-    out.write(createBody(data));
-    out.flush();
-    out.close();
+    out.write(statusLine.getBytes());
+    out.write(contentTypeLine.getBytes());
+    out.write(contentLengthLine.getBytes());
+    out.write(data);
   }
 
-  private void sendResponse(StatusCode statusCode) throws IOException {
-    out.write(createStatusLine(statusCode));
-    out.write(createContentTypeLine("text/plain"));
-    out.write(createBody(new byte[0]));
+  private void writeResponse(StatusCode statusCode) throws IOException {
+    writeResponse(statusCode, "text/plain", new byte[0]);
+  }
+
+  private void sendResponse() {
+    try {
     out.flush();
     out.close();
+    } catch (IOException e) {
+      System.err.println("Error closing output stream: " + e.getMessage());
+    }
+  }
+
+  private void closeClientSocket() {
+    try {
+      clientSocket.close();
+    } catch (IOException e) {
+      System.err.println("Error closing client socket: " + e.getMessage());
+    }
   }
 }

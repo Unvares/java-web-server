@@ -16,20 +16,21 @@ public class FileManager {
         this.rootDirectory = rootDirectory;
     }
 
-    public File getFile(String path) throws IOException {
-        File requestedFile = new File(rootDirectory, path);
-        validateFilePath(requestedFile);
+    public File getContent(String path) throws IOException {
+        File requestedContent = new File(rootDirectory, path);
+        validatePath(requestedContent);
 
-        if (!requestedFile.exists()) {
+        if (!requestedContent.exists()) {
             throw new NoSuchFileException("Requested file does not exist.");
         }
 
-        return requestedFile;
+        return requestedContent;
     }
 
-    public byte[] getFileAsByteArray(String path) throws IOException {
-        File file = getFile(path);
-        return Files.readAllBytes(file.toPath());
+    public byte[] getContentAsBytes(String path) throws IOException {
+        File file = getContent(path);
+        byte[] data = Files.readAllBytes(file.toPath());
+        return data;
     }
 
     public String getMimeType(String path) throws IOException {
@@ -43,7 +44,7 @@ public class FileManager {
 
     public void saveFile(InputStream fileData, String path) throws IOException {
         File targetFile = new File(rootDirectory, path);
-        validateFilePath(targetFile);
+        validatePath(targetFile);
 
         FileOutputStream out = new FileOutputStream(targetFile);
         byte[] buffer = new byte[1024];
@@ -54,9 +55,15 @@ public class FileManager {
         out.close();
     }
 
-    private void validateFilePath(File file) throws IOException {
+    private void validatePath(File file) throws IOException {
         if (!file.getCanonicalPath().startsWith(rootDirectory.getCanonicalPath())) {
             throw new AccessDeniedException("Access to files outside of the root directory is prohibited.");
         }
+    }
+
+    public boolean isDirectory(String path) throws IOException {
+        File file = new File(rootDirectory, path);
+        validatePath(file);
+        return file.isDirectory() ? true : false;
     }
 }
