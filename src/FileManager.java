@@ -5,7 +5,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.AccessDeniedException;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Paths;
 
 public class FileManager {
     private final File rootDirectory;
@@ -23,6 +25,28 @@ public class FileManager {
         }
 
         return requestedFile;
+    }
+
+    public byte[] getFileAsByteArray(String path) throws IOException {
+        File file = getFile(path);
+        return Files.readAllBytes(file.toPath());
+    }
+
+    public String getMimeType(String path) throws IOException {
+        String extension = "";
+
+        int i = path.lastIndexOf('.');
+        if (i > 0) {
+            extension = path.substring(i + 1);
+        }
+
+        String mimeType = Files.probeContentType(Paths.get(extension));
+
+        if (extension.isEmpty() || mimeType == null) {
+            throw new IllegalArgumentException("File extension is missing or MIME type could not be determined.");
+        }
+
+        return mimeType;
     }
 
     public void saveFile(InputStream fileData, String path) throws IOException {
