@@ -78,7 +78,7 @@ class Server {
       try {
         serverSocket.close();
       } catch (IOException e) {
-        System.out.println("Error closing server socket: " + e.getMessage());
+        System.err.println("Error closing server socket: " + e.getMessage());
       }
     }
   }

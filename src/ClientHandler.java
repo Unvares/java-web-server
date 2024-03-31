@@ -29,10 +29,10 @@ public class ClientHandler extends Thread {
     try (InputStream in = clientSocket.getInputStream()) {
       handleRequest(in);
     } catch (IOException | RuntimeException e) {
-      System.out.println("Exception caught when trying to handle the client request");
-      System.out.println("Error: " + e.getMessage());
-      System.out.println("Interrupting " + this.getName());
-      System.out.println();
+      System.err.println("Exception caught when trying to handle the client request");
+      System.err.println("Error: " + e.getMessage());
+      System.err.println("Interrupting " + this.getName());
+      System.err.println();
       e.printStackTrace();
       interrupt();
     } finally {
@@ -125,8 +125,8 @@ public class ClientHandler extends Thread {
 
   private void sendResponse() {
     try {
-    out.flush();
-    out.close();
+      out.flush();
+      out.close();
     } catch (IOException e) {
       System.err.println("Error closing output stream: " + e.getMessage());
     }
