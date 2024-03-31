@@ -33,16 +33,8 @@ public class FileManager {
     }
 
     public String getMimeType(String path) throws IOException {
-        String extension = "";
-
-        int i = path.lastIndexOf('.');
-        if (i > 0) {
-            extension = path.substring(i + 1);
-        }
-
-        String mimeType = Files.probeContentType(Paths.get(extension));
-
-        if (extension.isEmpty() || mimeType == null) {
+        String mimeType = Files.probeContentType(Paths.get(path));
+        if (mimeType == null) {
             throw new IllegalArgumentException("File extension is missing or MIME type could not be determined.");
         }
 
